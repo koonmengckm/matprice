@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Material Price Tracker and Trend: a single-file, framework-free web app (`index.html`, inline CSS + vanilla JS in one IIFE) for tracking factory material prices against a per-item base price. The user explicitly requires **no frameworks or libraries** (the chart is hand-drawn on `<canvas>`), so don't add dependencies or a build step.
+Material Price Tracker and Trending Chart: a single-file, framework-free web app (`index.html`, inline CSS + vanilla JS in one IIFE) for tracking factory material prices against a per-item base price. The user explicitly requires **no frameworks or libraries** (the chart is hand-drawn on `<canvas>`), so don't add dependencies or a build step.
 
 There is no build, lint or test tooling. Run it by opening `index.html` in a browser (file:// works). Note the built-in preview pane has no `localStorage`, so persistence can't be verified there; saves fail with a warning but in-memory state still works.
 
