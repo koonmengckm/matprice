@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Material Price Tracker and Trend</title>
+<style>
+  :root{
+    --navy:#0f2a47; --navy2:#1d4272; --bg:#f1f4f9; --card:#fff; --line:#e3e8f0;
+    --text:#1e293b; --muted:#64748b; --green:#16a34a; --red:#dc2626; --grey:#64748b;
+    --accent:#2563eb;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif}
+  header{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;text-align:center;padding:28px 16px 30px;box-shadow:0 2px 10px rgba(15,42,71,.25)}
+  header h1{margin:0;font-size:clamp(22px,4vw,34px);font-weight:600;letter-spacing:.4px}
+  header p{margin:6px 0 0;color:#b9c9e0;font-size:13px;letter-spacing:.3px}
+  main{max-width:1100px;margin:24px auto;padding:0 16px;display:grid;gap:22px}
+  .card{background:var(--card);border-radius:14px;box-shadow:0 1px 3px rgba(15,42,71,.08),0 8px 24px rgba(15,42,71,.06);padding:22px}
+  .card h2{margin:0 0 16px;font-size:16px;font-weight:600;color:var(--navy);display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(170px,100%),1fr));gap:14px;align-items:end}
+  .grid>*{min-width:0}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+  select,input[type=number],input[type=month],input[type=text]{width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;background:#fff;color:var(--text)}
+  select:focus,input:focus{outline:2px solid rgba(37,99,235,.35);border-color:var(--accent)}
+  button{font:inherit;cursor:pointer;border:0;border-radius:8px;padding:10px 16px;font-weight:600}
+  .primary{background:var(--accent);color:#fff}.primary:hover{background:#1d4ed8}
+  .ghost{background:#eef2f8;color:var(--navy)}.ghost:hover{background:#e0e7f1}
+  .seg{display:inline-flex;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden;width:100%}
+  .seg button{flex:1;border-radius:0;background:#fff;color:var(--muted);padding:10px 8px}
+  .seg button.on{background:var(--navy);color:#fff}
+  .hint{margin-top:12px;font-size:13px;color:var(--muted);min-height:20px}
+  .msg{margin-top:8px;font-size:13px;font-weight:600;min-height:18px}
+  .msg.err{color:var(--red)}.msg.ok{color:var(--green)}
+  .addrow{display:flex;gap:8px;margin-top:14px;max-width:420px}
+  .addrow input{flex:1}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+  .kpi{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fafbfd}
+  .kpi .l{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600}
+  .kpi .v{font-size:22px;font-weight:700;margin-top:2px;color:var(--navy)}
+  .kpi .s{font-size:12px;color:var(--muted)}
+  .up{color:var(--red)!important}.down{color:var(--green)!important}.flat{color:var(--grey)!important}
+  .chartwrap{position:relative;width:100%}
+  canvas{display:block;width:100%;height:400px}
+  .tip{position:absolute;pointer-events:none;background:rgba(15,42,71,.95);color:#fff;border-radius:8px;padding:8px 11px;font-size:12.5px;line-height:1.5;box-shadow:0 6px 18px rgba(0,0,0,.25);display:none;white-space:nowrap;z-index:5}
+  .tip b{font-size:13px}
+  .legend{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:12px;font-size:12.5px;color:var(--muted);align-items:center}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin-top:20px}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);text-align:left;padding:9px 10px;border-bottom:2px solid var(--line)}
+  td{padding:9px 10px;border-bottom:1px solid var(--line)}
+  td.n,th.n{text-align:right}
+  tbody tr:hover{background:#f7f9fc}
+  .badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:700}
+  .b-up{background:#fee2e2;color:var(--red)}.b-down{background:#dcfce7;color:var(--green)}.b-flat{background:#e2e8f0;color:var(--grey)}.b-base{background:#dbeafe;color:#1d4ed8}
+  .del{background:none;color:#94a3b8;padding:2px 8px;font-size:16px}.del:hover{color:var(--red)}
+  .empty{padding:50px 10px;text-align:center;color:var(--muted)}
+  .tools{display:flex;gap:8px;flex-wrap:wrap}
+  .tools button{padding:6px 12px;font-size:13px}
+  footer{text-align:center;color:var(--muted);font-size:12px;padding:0 0 28px}
+  @media(max-width:600px){.card{padding:16px}canvas{height:320px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Material Price Tracker and Trend</h1>
+  <p>Monitor factory material costs against base prices</p>
+</header>
+
+<main>
+  <!-- INPUT -->
+  <section class="card">
+    <h2>Price Entry
+      <span class="tools">
+        <button class="ghost" id="btnExport" type="button">Export backup</button>
+        <button class="ghost" id="btnImport" type="button">Import backup</button>
+        <input type="file" id="fileImport" accept="application/json" hidden>
+      </span>
+    </h2>
+    <div class="grid">
+      <div><label for="inCat">Category</label><select id="inCat"></select></div>
+      <div><label for="inItem">Item</label><select id="inItem"></select></div>
+      <div>
+        <label>Entry type</label>
+        <div class="seg"><button type="button" id="modeBase" class="on">Base price</button><button type="button" id="modeNew">New price</button></div>
+      </div>
+      <div><label for="inPrice">Price</label><input type="number" id="inPrice" min="0" step="0.01" placeholder="0.00"></div>
+      <div><label for="inMonth" id="lblMonth">Base month / year</label><input type="month" id="inMonth"></div>
+      <div><button class="primary" id="btnSave" type="button" style="width:100%">Save base price</button></div>
+    </div>
+    <div class="hint" id="itemHint"></div>
+    <div class="msg" id="formMsg" role="status"></div>
+    <div class="addrow">
+      <input type="text" id="newItemName" placeholder="Add a new item to the selected category (e.g. under Others)">
+      <button class="ghost" id="btnAddItem" type="button">+ Add item</button>
+    </div>
+  </section>
+
+  <!-- CHART -->
+  <section class="card">
+    <h2>Price Trend vs Base Price</h2>
+    <div class="grid" style="margin-bottom:18px;max-width:560px">
+      <div><label for="fCat">Category</label><select id="fCat"></select></div>
+      <div><label for="fItem">Item</label><select id="fItem"></select></div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <div class="chartwrap" id="wrap">
+      <canvas id="chart"></canvas>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div id="tableBox"></div>
+  </section>
+</main>
+<footer>Data is stored in this browser only. Use “Export backup” to keep a copy.</footer>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------- Master data ---------- */
+var CATS = {
+  "Meat": ["Boneless Chicken","Boneless Skinless Chicken","Pork Leg","Pork Fat","Mutton Leg","Beef Knuckle","Chicken Wings"],
+  "Ingredient": ["Vegetable Oil","Sugar","Salt (25kg)","Mala Paste","BBQ Sauce"],
+  "Expendables": ["PE Bags","HD Bags","Pull Towels","Blue Gloves","White Gloves","Garbage Bags","Apron","Hair Net"],
+  "Others": []
+};
+var GREEN="#16a34a", RED="#dc2626", GREY="#64748b";
+var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var KEY="mptData";
+
+/* ---------- Storage ---------- */
+var data = load();
+function load(){
+  try{
+    var d = JSON.parse(localStorage.getItem(KEY));
+    if(d && d.records) { d.customItems = d.customItems || {}; return d; }
+  }catch(e){}
+  return {customItems:{}, records:{}};
+}
+var saveFailed=false;
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(data)); saveFailed=false; }catch(e){ saveFailed=true; } }
+function done(msg){ if(saveFailed) showMsg(msg+" (Warning: browser storage unavailable – data will be lost on reload; use Export backup.)",true); else showMsg(msg); }
+
+/* ---------- Helpers ---------- */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
+function fmtYM(ym){ var p=ym.split("-"); return MON[+p[1]-1]+" "+p[0]; }
+function money(n){ return Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function pct(n){ return (n>0?"+":"")+n.toFixed(1)+"%"; }
+function cls(d){ return d>0?"up":d<0?"down":"flat"; }
+function color(d){ return d>0?RED:d<0?GREEN:GREY; }
+function itemsOf(cat){ return (CATS[cat]||[]).concat(data.customItems[cat]||[]); }
+function rkey(cat,item){ return cat+"|"+item; }
+function showMsg(t,err){ var m=$("formMsg"); m.textContent=t; m.className="msg "+(err?"err":"ok"); }
+function fill(sel, opts, keep){
+  var cur=sel.value; sel.innerHTML="";
+  opts.forEach(function(o){ var op=document.createElement("option"); op.value=o.v; op.textContent=o.t; sel.appendChild(op); });
+  if(keep && opts.some(function(o){return o.v===cur;})) sel.value=cur;
+}
+function seriesPoints(rec){
+  var pts=[{ym:rec.base.ym,price:rec.base.price,isBase:true}];
+  rec.prices.slice().sort(function(a,b){return a.ym<b.ym?-1:a.ym>b.ym?1:0;}).forEach(function(p){ pts.push({ym:p.ym,price:p.price}); });
+  return pts;
+}
+
+/* ---------- Input form ---------- */
+var mode="base";
+function setMode(m){
+  mode=m;
+  $("modeBase").classList.toggle("on",m==="base");
+  $("modeNew").classList.toggle("on",m==="new");
+  $("btnSave").textContent = m==="base" ? "Save base price" : "Save new price";
+  $("lblMonth").textContent = m==="base" ? "Base month / year" : "Effective month / year";
+}
+function populateInputItems(){
+  var cat=$("inCat").value;
+  fill($("inItem"), itemsOf(cat).map(function(i){return {v:i,t:i};}), true);
+  if(!itemsOf(cat).length){ fill($("inItem"),[{v:"",t:"(no items – add one below)"}]); }
+  updateHint();
+}
+function updateHint(){
+  var cat=$("inCat").value, item=$("inItem").value, h=$("itemHint");
+  var rec=data.records[rkey(cat,item)];
+  if(!item){ h.textContent=""; return; }
+  if(!rec){ h.textContent="No base price set for "+item+" yet – choose “Base price” and save one first."; return; }
+  var last=seriesPoints(rec).slice(-1)[0];
+  h.textContent="Base: "+money(rec.base.price)+" ("+fmtYM(rec.base.ym)+")  ·  Latest: "+money(last.price)+" ("+fmtYM(last.ym)+")";
+}
+function onSave(){
+  var cat=$("inCat").value, item=$("inItem").value;
+  var price=parseFloat($("inPrice").value), ym=$("inMonth").value;
+  if(!item) return showMsg("Please select an item.",true);
+  if(!(price>0)) return showMsg("Enter a price greater than 0.",true);
+  if(!/^\d{4}-\d{2}$/.test(ym)) return showMsg("Select the month and year.",true);
+  var k=rkey(cat,item), rec=data.records[k];
+  if(mode==="base"){
+    if(rec){
+      var early=rec.prices.some(function(p){return p.ym<ym;});
+      if(early) return showMsg("Base month cannot be later than existing price entries.",true);
+      rec.base={ym:ym,price:price};
+    } else data.records[k]={base:{ym:ym,price:price},prices:[]};
+    save(); done("Base price saved for "+item+".");
+  } else {
+    if(!rec) return showMsg("Set a base price for "+item+" first.",true);
+    if(ym<rec.base.ym) return showMsg("Effective date cannot be before the base month ("+fmtYM(rec.base.ym)+").",true);
+    if(ym===rec.base.ym) return showMsg("That month is the base month. Use “Base price” to change it.",true);
+    var ex=rec.prices.filter(function(p){return p.ym===ym;})[0];
+    if(ex) ex.price=price; else rec.prices.push({ym:ym,price:price});
+    save(); done("Price saved for "+item+" – "+fmtYM(ym)+".");
+  }
+  $("inPrice").value="";
+  updateHint();
+  // show the saved item in the chart
+  $("fCat").value=cat; populateChartItems(); $("fItem").value=item; render();
+}
+function onAddItem(){
+  var cat=$("inCat").value, name=$("newItemName").value.trim();
+  if(!name) return showMsg("Type an item name to add.",true);
+  if(itemsOf(cat).some(function(i){return i.toLowerCase()===name.toLowerCase();})) return showMsg("That item already exists in "+cat+".",true);
+  (data.customItems[cat]=data.customItems[cat]||[]).push(name);
+  save(); $("newItemName").value="";
+  populateInputItems(); $("inItem").value=name; updateHint();
+  populateChartItems(); done("Added “"+name+"” to "+cat+".");
+}
+
+/* ---------- Chart filters ---------- */
+function populateChartItems(){
+  var cat=$("fCat").value;
+  var opts=[{v:"__all",t:"All items in category"}].concat(itemsOf(cat).map(function(i){return {v:i,t:i};}));
+  fill($("fItem"),opts,true);
+}
+
+/* ---------- Chart rendering ---------- */
+var canvas=$("chart"), ctx=canvas.getContext("2d"), hits=[], hover=null;
+var SHAPES=["circle","square","diamond","triangle"], DASHES=[[],[8,4],[2,4],[12,4,2,4]];
+
+function niceTicks(min,max,n){
+  if(min===max){ min-=1; max+=1; }
+  var span=max-min, raw=span/n, mag=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/mag;
+  var step=(f<=1?1:f<=2?2:f<=5?5:10)*mag;
+  var lo=Math.floor(min/step)*step, hi=Math.ceil(max/step)*step, t=[];
+  for(var v=lo; v<=hi+step/2; v+=step) t.push(+v.toFixed(10));
+  return t;
+}
+function marker(c,x,y,r,shape){
+  c.beginPath();
+  if(shape==="square"){ c.rect(x-r,y-r,2*r,2*r); }
+  else if(shape==="diamond"){ c.moveTo(x,y-r*1.3); c.lineTo(x+r*1.3,y); c.lineTo(x,y+r*1.3); c.lineTo(x-r*1.3,y); c.closePath(); }
+  else if(shape==="triangle"){ c.moveTo(x,y-r*1.3); c.lineTo(x+r*1.2,y+r); c.lineTo(x-r*1.2,y+r); c.closePath(); }
+  else c.arc(x,y,r,0,Math.PI*2);
+}
+
+function buildSeries(){
+  var cat=$("fCat").value, item=$("fItem").value, out=[], single=item!=="__all";
+  var names = single ? [item] : itemsOf(cat);
+  names.forEach(function(n){
+    var rec=data.records[rkey(cat,n)];
+    if(rec) out.push({name:n, base:rec.base, pts:seriesPoints(rec)});
+  });
+  return {single:single, cat:cat, series:out};
+}
+
+function render(){
+  var S=buildSeries(), single=S.single, series=S.series;
+  renderKpis(S); renderTable(S); renderLegend(S);
+  var wrap=$("wrap"), W=wrap.clientWidth, H=canvas.clientHeight, dpr=window.devicePixelRatio||1;
+  canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  hits=[]; hover=null; $("tip").style.display="none";
+
+  if(!series.length){
+    ctx.fillStyle="#94a3b8"; ctx.font="15px Segoe UI, sans-serif"; ctx.textAlign="center";
+    ctx.fillText(single?"No base price set for this item yet.":"No items in this category have a base price yet.",W/2,H/2-6);
+    ctx.font="13px Segoe UI, sans-serif";
+    ctx.fillText("Use Price Entry above to add a base price, then new prices.",W/2,H/2+16);
+    return;
+  }
+
+  // x categories
+  var set={}; series.forEach(function(s){ s.pts.forEach(function(p){ set[p.ym]=1; }); });
+  var xs=Object.keys(set).sort();
+  var val=function(s,p){ return single ? p.price : (p.price-s.base.price)/s.base.price*100; };
+  var baseV=function(s){ return single ? s.base.price : 0; };
+
+  var min=Infinity,max=-Infinity;
+  series.forEach(function(s){
+    min=Math.min(min,baseV(s)); max=Math.max(max,baseV(s));
+    s.pts.forEach(function(p){ var v=val(s,p); min=Math.min(min,v); max=Math.max(max,v); });
+  });
+  var pad=(max-min)*0.12 || Math.abs(max)*0.1 || 1;
+  var ticks=niceTicks(min-pad,max+pad,5), yMin=ticks[0], yMax=ticks[ticks.length-1];
+
+  var rotate = xs.length>7;
+  var M={l:single?72:64, r:26, t:22, b:rotate?72:50};
+  var pw=W-M.l-M.r, ph=H-M.t-M.b;
+  var X=function(ym){ var i=xs.indexOf(ym); return xs.length===1? M.l+pw/2 : M.l+pw*i/(xs.length-1); };
+  var Y=function(v){ return M.t+ph*(1-(v-yMin)/(yMax-yMin)); };
+
+  // plot background + grid
+  ctx.fillStyle="#fbfcfe"; ctx.fillRect(M.l,M.t,pw,ph);
+  ctx.font="12px Segoe UI, sans-serif"; ctx.textBaseline="middle";
+  ticks.forEach(function(t){
+    var y=Y(t);
+    ctx.strokeStyle="#e8edf4"; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(M.l,y); ctx.lineTo(M.l+pw,y); ctx.stroke();
+    ctx.fillStyle="#7b8aa0"; ctx.textAlign="right";
+    ctx.fillText(single?money(t):pct(t).replace(".0%","%"),M.l-10,y);
+  });
+  // axes
+  ctx.strokeStyle="#c3ccda"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(M.l,M.t); ctx.lineTo(M.l,M.t+ph); ctx.lineTo(M.l+pw,M.t+ph); ctx.stroke();
+  // x labels + faint verticals
+  xs.forEach(function(ym){
+    var x=X(ym);
+    ctx.strokeStyle="#eef2f7"; ctx.beginPath(); ctx.moveTo(x,M.t); ctx.lineTo(x,M.t+ph); ctx.stroke();
+    ctx.fillStyle="#475569"; ctx.textBaseline="top";
+    if(rotate){ ctx.save(); ctx.translate(x,M.t+ph+10); ctx.rotate(-Math.PI/4); ctx.textAlign="right"; ctx.fillText(fmtYM(ym),0,0); ctx.restore(); }
+    else { ctx.textAlign="center"; ctx.fillText(fmtYM(ym),x,M.t+ph+10); }
+  });
+  // axis titles
+  ctx.save(); ctx.fillStyle="#94a3b8"; ctx.font="11px Segoe UI, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.translate(14,M.t+ph/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText(single?"Price":"Change vs base price (%)",0,0); ctx.restore();
+
+  // base lines
+  var by=Y(0===baseV(series[0])&&!single?0:baseV(series[0]));
+  if(single){
+    ctx.strokeStyle="#475569"; ctx.lineWidth=1.5; ctx.setLineDash([7,5]);
+    ctx.beginPath(); ctx.moveTo(M.l,by); ctx.lineTo(M.l+pw,by); ctx.stroke(); ctx.setLineDash([]);
+    var lab="Base "+money(series[0].base.price)+" · "+fmtYM(series[0].base.ym);
+    ctx.font="600 12px Segoe UI, sans-serif"; var tw=ctx.measureText(lab).width+16;
+    ctx.fillStyle="#334155"; roundRect(ctx,M.l+pw-tw-4,by-24,tw,20,5); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(lab,M.l+pw-tw/2-4,by-14);
+  } else {
+    ctx.strokeStyle="#475569"; ctx.lineWidth=1.5; ctx.setLineDash([7,5]);
+    ctx.beginPath(); ctx.moveTo(M.l,by); ctx.lineTo(M.l+pw,by); ctx.stroke(); ctx.setLineDash([]);
+    ctx.font="600 11px Segoe UI, sans-serif"; ctx.fillStyle="#475569"; ctx.textAlign="right"; ctx.textBaseline="bottom";
+    ctx.fillText("Base price (0%)",M.l+pw-6,by-4);
+  }
+
+  // series
+  series.forEach(function(s,si){
+    var dash=single?[]:DASHES[si%DASHES.length], shape=single?"circle":SHAPES[si%SHAPES.length];
+    var pts=s.pts.map(function(p){ var v=val(s,p); return {x:X(p.ym),y:Y(v),v:v,p:p}; });
+    var b=Y(baseV(s));
+    // area fills
+    for(var i=0;i<pts.length-1;i++){
+      segs(pts[i],pts[i+1],b).forEach(function(g){
+        ctx.fillStyle=g.c===GREEN?"rgba(22,163,74,.14)":g.c===RED?"rgba(220,38,38,.14)":"rgba(100,116,139,.08)";
+        if(!single) ctx.fillStyle=g.c===GREEN?"rgba(22,163,74,.06)":g.c===RED?"rgba(220,38,38,.06)":"rgba(100,116,139,.04)";
+        ctx.beginPath(); ctx.moveTo(g.x1,g.y1); ctx.lineTo(g.x2,g.y2); ctx.lineTo(g.x2,b); ctx.lineTo(g.x1,b); ctx.closePath(); ctx.fill();
+      });
+    }
+    // lines
+    ctx.lineWidth=single?3:2.4; ctx.lineJoin="round"; ctx.lineCap="round"; ctx.setLineDash(dash);
+    for(var j=0;j<pts.length-1;j++){
+      segs(pts[j],pts[j+1],b).forEach(function(g){
+        ctx.strokeStyle=g.c; ctx.beginPath(); ctx.moveTo(g.x1,g.y1); ctx.lineTo(g.x2,g.y2); ctx.stroke();
+      });
+    }
+    ctx.setLineDash([]);
+    // markers
+    pts.forEach(function(q){
+      var c=q.p.isBase?GREY:color(q.v-baseV(s));
+      marker(ctx,q.x,q.y,single?6:5,shape); ctx.fillStyle="#fff"; ctx.fill();
+      marker(ctx,q.x,q.y,single?4.2:3.4,shape); ctx.fillStyle=c; ctx.fill();
+      ctx.lineWidth=2; ctx.strokeStyle=c; marker(ctx,q.x,q.y,single?6:5,shape); ctx.stroke();
+      hits.push({x:q.x,y:q.y,s:s,p:q.p,v:q.v,single:single});
+    });
+    // value labels in single mode
+    if(single && pts.length<=14){
+      ctx.font="600 11.5px Segoe UI, sans-serif"; ctx.textAlign="center";
+      pts.forEach(function(q){
+        var above = q.v>=baseV(s);
+        ctx.fillStyle=q.p.isBase?"#475569":color(q.v-baseV(s));
+        ctx.textBaseline=above?"bottom":"top";
+        ctx.fillText(money(q.p.price),q.x,q.y+(above?-11:11));
+      });
+    }
+  });
+}
+function segs(a,b,base){
+  var da=base-a.y, db=base-b.y; // positive = above base on screen = price above base
+  var sgn=function(d){ return Math.abs(d)<1e-9?0:d>0?1:-1; };
+  var cc=function(d){ return d>0?RED:d<0?GREEN:GREY; };
+  if(sgn(da)*sgn(db)<0){
+    var t=da/(da-db), cx=a.x+(b.x-a.x)*t;
+    return [{x1:a.x,y1:a.y,x2:cx,y2:base,c:cc(da)},{x1:cx,y1:base,x2:b.x,y2:b.y,c:cc(db)}];
+  }
+  return [{x1:a.x,y1:a.y,x2:b.x,y2:b.y,c:cc(sgn(da)!==0?da:db)}];
+}
+function roundRect(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+
+/* ---------- KPIs, legend, table ---------- */
+function renderKpis(S){
+  var k=$("kpis"), s=S.series;
+  if(!s.length){ k.innerHTML=""; return; }
+  function kp(l,v,sub,c){ return '<div class="kpi"><div class="l">'+l+'</div><div class="v '+(c||"")+'">'+v+'</div><div class="s">'+sub+'</div></div>'; }
+  if(S.single){
+    var x=s[0], pr=x.pts.map(function(p){return p.price;}), last=x.pts[x.pts.length-1];
+    var ch=(last.price-x.base.price)/x.base.price*100, hi=Math.max.apply(null,pr), lo=Math.min.apply(null,pr);
+    k.innerHTML = kp("Base price",money(x.base.price),fmtYM(x.base.ym)) +
+      kp("Latest price",money(last.price),fmtYM(last.ym),cls(last.price-x.base.price)) +
+      kp("Change vs base",pct(ch),money(last.price-x.base.price),cls(ch)) +
+      kp("Highest",money(hi),"since base") + kp("Lowest",money(lo),"since base");
+  } else {
+    var up=0,dn=0,best=null,worst=null;
+    s.forEach(function(x){
+      var l=x.pts[x.pts.length-1], c=(l.price-x.base.price)/x.base.price*100; x.latestPct=c;
+      if(c>0)up++; else if(c<0)dn++;
+      if(!best||c>best.c)best={n:x.name,c:c}; if(!worst||c<worst.c)worst={n:x.name,c:c};
+    });
+    k.innerHTML = kp("Items tracked",s.length,"with base price") + kp("Above base",up,"latest price higher",up?"up":"") +
+      kp("Below base",dn,"latest price lower",dn?"down":"") + kp("Biggest rise",pct(best.c),esc(best.n),cls(best.c)) +
+      kp("Biggest drop",pct(worst.c),esc(worst.n),cls(worst.c));
+  }
+}
+function renderLegend(S){
+  var l=$("legend"), h='<span><i class="dot" style="background:'+GREEN+'"></i>Below base price (cheaper)</span>'+
+    '<span><i class="dot" style="background:'+RED+'"></i>Above base price (costlier)</span>'+
+    '<span><i class="dot" style="background:'+GREY+'"></i>Base / unchanged</span>';
+  if(!S.single && S.series.length){
+    S.series.forEach(function(s,i){
+      var sh=SHAPES[i%SHAPES.length], d=DASHES[i%DASHES.length].join(",")||"";
+      var sym={circle:"●",square:"■",diamond:"◆",triangle:"▲"}[sh];
+      h+='<span style="color:#334155"><b>'+sym+'</b> '+esc(s.name)+(d?' <small>(dashed pattern)</small>':'')+'</span>';
+    });
+  }
+  l.innerHTML=h;
+}
+function renderTable(S){
+  var box=$("tableBox"), s=S.series;
+  if(!s.length){ box.innerHTML=""; return; }
+  var h="";
+  if(S.single){
+    var x=s[0], b=x.base.price;
+    h='<table><thead><tr><th>Month / Year</th><th class="n">Price</th><th class="n">Change vs base</th><th class="n">% change</th><th></th></tr></thead><tbody>';
+    x.pts.forEach(function(p){
+      var d=p.price-b, pc=d/b*100;
+      h+='<tr><td>'+fmtYM(p.ym)+(p.isBase?' <span class="badge b-base">Base</span>':'')+'</td><td class="n">'+money(p.price)+'</td>'+
+        '<td class="n '+cls(d)+'">'+(d>0?"+":"")+money(d)+'</td><td class="n '+cls(d)+'"><b>'+(p.isBase?"–":pct(pc))+'</b></td>'+
+        '<td class="n">'+(p.isBase?'':'<button class="del" title="Delete this entry" data-ym="'+p.ym+'">&times;</button>')+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  } else {
+    h='<table><thead><tr><th>Item</th><th class="n">Base price</th><th class="n">Latest price</th><th class="n">% change</th><th>Status</th></tr></thead><tbody>';
+    s.forEach(function(x){
+      var l=x.pts[x.pts.length-1], d=l.price-x.base.price, pc=d/x.base.price*100;
+      h+='<tr><td>'+esc(x.name)+'</td><td class="n">'+money(x.base.price)+' <small style="color:#94a3b8">'+fmtYM(x.base.ym)+'</small></td>'+
+        '<td class="n">'+money(l.price)+' <small style="color:#94a3b8">'+fmtYM(l.ym)+'</small></td><td class="n '+cls(d)+'"><b>'+pct(pc)+'</b></td>'+
+        '<td><span class="badge '+(d>0?"b-up":d<0?"b-down":"b-flat")+'">'+(d>0?"Above base":d<0?"Below base":"At base")+'</span></td></tr>';
+    });
+    h+='</tbody></table>';
+  }
+  box.innerHTML=h;
+}
+$("tableBox").addEventListener("click",function(e){
+  var b=e.target.closest(".del"); if(!b) return;
+  var cat=$("fCat").value, item=$("fItem").value, rec=data.records[rkey(cat,item)];
+  if(!rec||!confirm("Delete the "+fmtYM(b.dataset.ym)+" price for "+item+"?")) return;
+  rec.prices=rec.prices.filter(function(p){return p.ym!==b.dataset.ym;});
+  save(); render(); updateHint();
+});
+
+/* ---------- Tooltip ---------- */
+canvas.addEventListener("mousemove",function(e){
+  var r=canvas.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top, best=null, bd=18*18;
+  hits.forEach(function(h){ var d=(h.x-mx)*(h.x-mx)+(h.y-my)*(h.y-my); if(d<bd){bd=d;best=h;} });
+  var tip=$("tip");
+  if(!best){ tip.style.display="none"; canvas.style.cursor="default"; return; }
+  canvas.style.cursor="pointer";
+  var b=best.s.base.price, d=best.p.price-b, pc=d/b*100;
+  tip.innerHTML='<b>'+esc(best.s.name)+'</b><br>'+fmtYM(best.p.ym)+(best.p.isBase?' (base)':'')+
+    '<br>Price: <b>'+money(best.p.price)+'</b><br>Base: '+money(b)+
+    (best.p.isBase?'':'<br>vs base: <b style="color:'+(d>0?"#fca5a5":d<0?"#86efac":"#cbd5e1")+'">'+(d>0?"+":"")+money(d)+' ('+pct(pc)+')</b>');
+  tip.style.display="block";
+  var tw=tip.offsetWidth, th=tip.offsetHeight, x=best.x+14, y=best.y-th-12;
+  if(x+tw>r.width) x=best.x-tw-14; if(y<0) y=best.y+14;
+  tip.style.left=x+"px"; tip.style.top=y+"px";
+});
+canvas.addEventListener("mouseleave",function(){ $("tip").style.display="none"; });
+
+/* ---------- Backup ---------- */
+$("btnExport").addEventListener("click",function(){
+  var blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}), a=document.createElement("a");
+  a.href=URL.createObjectURL(blob); a.download="material-prices-backup.json"; document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500);
+});
+$("btnImport").addEventListener("click",function(){ $("fileImport").click(); });
+$("fileImport").addEventListener("change",function(e){
+  var f=e.target.files[0]; if(!f) return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    try{
+      var d=JSON.parse(rd.result);
+      if(!d||typeof d.records!=="object") throw new Error("bad");
+      if(!confirm("Replace the current data with the contents of this backup?")) return;
+      d.customItems=d.customItems||{}; data=d; save();
+      populateInputItems(); populateChartItems(); render(); showMsg("Backup imported.");
+    }catch(err){ showMsg("That file is not a valid backup.",true); }
+  };
+  rd.readAsText(f); e.target.value="";
+});
+
+/* ---------- Init ---------- */
+var catOpts=Object.keys(CATS).map(function(c){return {v:c,t:c};});
+fill($("inCat"),catOpts); fill($("fCat"),catOpts);
+$("inCat").addEventListener("change",populateInputItems);
+$("inItem").addEventListener("change",updateHint);
+$("fCat").addEventListener("change",function(){ populateChartItems(); render(); });
+$("fItem").addEventListener("change",render);
+$("modeBase").addEventListener("click",function(){ setMode("base"); });
+$("modeNew").addEventListener("click",function(){ setMode("new"); });
+$("btnSave").addEventListener("click",onSave);
+$("btnAddItem").addEventListener("click",onAddItem);
+$("newItemName").addEventListener("keydown",function(e){ if(e.key==="Enter") onAddItem(); });
+$("inPrice").addEventListener("keydown",function(e){ if(e.key==="Enter") onSave(); });
+var d0=new Date(); $("inMonth").value=d0.getFullYear()+"-"+("0"+(d0.getMonth()+1)).slice(-2);
+populateInputItems(); populateChartItems(); render();
+window.addEventListener("resize",render);
+})();
+</script>
+</body>
+</html>
